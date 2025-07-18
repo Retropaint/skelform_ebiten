@@ -2,11 +2,9 @@ module github.com/retropaint/skelform_ebiten
 
 go 1.23.4
 
-replace github.com/retropaint/skelform_go => ../skelform_go
-
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.8.8
-	github.com/retropaint/skelform_go v0.0.0-00010101000000-000000000000
+	github.com/retropaint/skelform_go v0.1.3-name
 )
 
 require (
