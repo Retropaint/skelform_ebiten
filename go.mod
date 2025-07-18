@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.8.8
-	github.com/retropaint/skelform_go v0.1.3-name
+	github.com/retropaint/skelform_go v0.1.4
 )
 
 require (
