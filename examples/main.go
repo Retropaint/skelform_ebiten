@@ -1,4 +1,4 @@
-package skelform_ebiten
+package main
 
 import (
 	"image"
@@ -14,10 +14,10 @@ import (
 )
 
 type Game struct {
-	root       skelform.Root
+	root       skelform_go.Root
 	texture    image.Image
 	frame      int
-	player_pos skelform.Vec2
+	player_pos skelform_go.Vec2
 	moving     bool
 	start_time time.Time
 }
@@ -76,7 +76,7 @@ func main() {
 		root:       root,
 		texture:    texture,
 		start_time: time.Now(),
-		player_pos: skelform.Vec2{
+		player_pos: skelform_go.Vec2{
 			X: float32(size_x) / 2,
 			Y: float32(size_y) / 2,
 		},
