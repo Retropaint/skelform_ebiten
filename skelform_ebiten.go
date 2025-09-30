@@ -18,28 +18,36 @@ func (ao *AnimOptions) Init() {
 	ao.Scale_factor = 0.25
 }
 
-func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.Image, anim_idx int, frame int, anim_options AnimOptions) {
-	animated_bones := skelform_go.Animate(armature, anim_idx, frame)
+func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.Image, animIdx int, frame int, anim_options AnimOptions) {
+	var animatedBones []skelform_go.Bone
+	for _, bone := range armature.Bones {
+		animatedBones = append(animatedBones, bone)
+	}
+
+	if animIdx < len(armature.Animations)-1 {
+		animatedBones = skelform_go.Animate(armature, animIdx, frame)
+	}
+
+	animatedBones = skelform_go.Inheritance(animatedBones)
+	skelform_go.InverseKinematics(animatedBones, armature.IkFamilies)
+
 	tex := ebiten.NewImageFromImage(texture)
 
-	var props []skelform_go.Bone
-	for _, bone := range animated_bones {
-		props = append(props, bone)
-
-		prop := &bone
-
-		if prop.Tex_idx == -1 {
+	for _, bone := range animatedBones {
+		if len(bone.Style_idxs) == 0 {
 			continue
 		}
 
+		texFields := armature.Styles[0].Textures[bone.Tex_idx]
+
 		// crop texture to this prop
 		tex_offset := skelform_go.Vec2{
-			X: armature.Textures[prop.Tex_idx].Offset.X,
-			Y: armature.Textures[prop.Tex_idx].Offset.Y,
+			X: texFields.Offset.X,
+			Y: texFields.Offset.Y,
 		}
 		tex_size := skelform_go.Vec2{
-			X: armature.Textures[prop.Tex_idx].Size.X,
-			Y: armature.Textures[prop.Tex_idx].Size.Y,
+			X: texFields.Size.X,
+			Y: texFields.Size.Y,
 		}
 		sub := tex.SubImage(image.Rectangle{
 			Min: image.Point{
@@ -55,24 +63,24 @@ func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.
 		op := &ebiten.DrawImageOptions{}
 
 		// Ebiten treats positive Y as down
-		prop.Pos.Y = -prop.Pos.Y
+		bone.Pos.Y = -bone.Pos.Y
 
 		// center prop for scale & rot operations
 		size := skelform_go.Vec2{
-			X: armature.Textures[prop.Tex_idx].Size.X / 2 * prop.Scale.X,
-			Y: armature.Textures[prop.Tex_idx].Size.Y / 2 * prop.Scale.Y,
+			X: texFields.Size.X / 2 * bone.Scale.X,
+			Y: texFields.Size.Y / 2 * bone.Scale.Y,
 		}
-		cos := math.Cos(float64(prop.Rot))
-		sin := math.Sin(float64(prop.Rot))
-		prop.Pos.X -= size.X*float32(cos) + size.Y*float32(sin)
-		prop.Pos.Y += size.X*float32(sin) - size.Y*float32(cos)
+		cos := math.Cos(float64(bone.Rot))
+		sin := math.Sin(float64(bone.Rot))
+		bone.Pos.X -= size.X*float32(cos) + size.Y*float32(sin)
+		bone.Pos.Y += size.X*float32(sin) - size.Y*float32(cos)
 
-		op.GeoM.Scale(float64(prop.Scale.X*anim_options.Scale_factor), float64(prop.Scale.Y*anim_options.Scale_factor))
-		op.GeoM.Rotate(-float64(prop.Rot))
+		op.GeoM.Scale(float64(bone.Scale.X*anim_options.Scale_factor), float64(bone.Scale.Y*anim_options.Scale_factor))
+		op.GeoM.Rotate(-float64(bone.Rot))
 
 		final_pos := skelform_go.Vec2{
-			X: prop.Pos.X*anim_options.Scale_factor + anim_options.Pos_offset.X,
-			Y: prop.Pos.Y*anim_options.Scale_factor + anim_options.Pos_offset.Y,
+			X: bone.Pos.X*anim_options.Scale_factor + anim_options.Pos_offset.X,
+			Y: bone.Pos.Y*anim_options.Scale_factor + anim_options.Pos_offset.Y,
 		}
 		op.GeoM.Translate(float64(final_pos.X), float64(final_pos.Y))
 
