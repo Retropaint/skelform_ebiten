@@ -49,7 +49,7 @@ func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.
 
 		texFields := armature.Styles[0].Textures[bone.Tex_idx]
 
-		// crop texture to this prop
+		// crop texture to this bone
 		tex_offset := skelform_go.Vec2{
 			X: texFields.Offset.X,
 			Y: texFields.Offset.Y,
@@ -74,7 +74,7 @@ func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.
 		// Ebiten treats positive Y as down
 		bone.Pos.Y = -bone.Pos.Y
 
-		// center prop for scale & rot operations
+		// center bone for scale & rot operations
 		size := skelform_go.Vec2{
 			X: texFields.Size.X / 2 * bone.Scale.X,
 			Y: texFields.Size.Y / 2 * bone.Scale.Y,
