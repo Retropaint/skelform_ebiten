@@ -28,8 +28,17 @@ func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.
 		animatedBones = skelform_go.Animate(armature, animIdx, frame)
 	}
 
-	animatedBones = skelform_go.Inheritance(animatedBones)
-	skelform_go.InverseKinematics(animatedBones, armature.IkFamilies)
+	var inheritedBones []skelform_go.Bone
+	for _, bone := range animatedBones {
+		inheritedBones = append(inheritedBones, bone)
+	}
+
+	skelform_go.Inheritance(inheritedBones, make(map[uint]float32))
+	var ikRots map[uint]float32
+	for i := 0; i < 10; i++ {
+		ikRots = skelform_go.InverseKinematics(inheritedBones, armature.Ik_families)
+	}
+	skelform_go.Inheritance(animatedBones, ikRots)
 
 	tex := ebiten.NewImageFromImage(texture)
 
