@@ -24,7 +24,7 @@ func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.
 		animatedBones = append(animatedBones, bone)
 	}
 
-	if animIdx < len(armature.Animations)-1 {
+	if animIdx < len(armature.Animations) {
 		animatedBones = skelform_go.Animate(armature, animIdx, frame)
 	}
 
