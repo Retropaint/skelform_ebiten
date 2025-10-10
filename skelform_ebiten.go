@@ -3,6 +3,8 @@ package skelform_ebiten
 import (
 	"image"
 	"math"
+	"sort"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/retropaint/skelform_go"
@@ -18,15 +20,20 @@ func (ao *AnimOptions) Init() {
 	ao.Scale_factor = 0.25
 }
 
-func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.Image, animIdx int, frame int, anim_options AnimOptions) {
+func Animate(
+	bones []skelform_go.Bone,
+	ikFamilies []skelform_go.IkFamily,
+	animation skelform_go.Animation,
+	screen *ebiten.Image,
+	frame int,
+	anim_options AnimOptions,
+) []skelform_go.Bone {
 	var animatedBones []skelform_go.Bone
-	for _, bone := range armature.Bones {
+	for _, bone := range bones {
 		animatedBones = append(animatedBones, bone)
 	}
 
-	if animIdx < len(armature.Animations) {
-		animatedBones = skelform_go.Animate(armature, animIdx, frame)
-	}
+	skelform_go.Animate(animatedBones, animation, frame)
 
 	var inheritedBones []skelform_go.Bone
 	for _, bone := range animatedBones {
@@ -36,18 +43,34 @@ func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.
 	skelform_go.Inheritance(inheritedBones, make(map[uint]float32))
 	var ikRots map[uint]float32
 	for i := 0; i < 10; i++ {
-		ikRots = skelform_go.InverseKinematics(inheritedBones, armature.Ik_families)
+		ikRots = skelform_go.InverseKinematics(inheritedBones, ikFamilies)
 	}
 	skelform_go.Inheritance(animatedBones, ikRots)
 
+	for b := range animatedBones {
+		bone := &animatedBones[b]
+		bone.Scale = bone.Scale.Mul(skelform_go.Vec2{X: anim_options.Scale_factor, Y: anim_options.Scale_factor})
+		bone.Pos.Y = -bone.Pos.Y
+		bone.Pos = bone.Pos.Mul(skelform_go.Vec2{X: anim_options.Scale_factor, Y: anim_options.Scale_factor})
+		bone.Pos = bone.Pos.Add(anim_options.Pos_offset)
+	}
+
+	return animatedBones
+}
+
+func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture image.Image, screen *ebiten.Image) {
 	tex := ebiten.NewImageFromImage(texture)
 
-	for _, bone := range animatedBones {
-		if len(bone.Style_idxs) == 0 {
+	sort.Slice(bones, func(i, j int) bool {
+		return bones[i].Zindex < bones[j].Zindex
+	})
+
+	for _, bone := range bones {
+		if len(bone.Style_ids) == 0 {
 			continue
 		}
 
-		texFields := armature.Styles[0].Textures[bone.Tex_idx]
+		texFields := styles[0].Textures[bone.Tex_idx]
 
 		// crop texture to this bone
 		tex_offset := skelform_go.Vec2{
@@ -71,9 +94,6 @@ func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.
 
 		op := &ebiten.DrawImageOptions{}
 
-		// Ebiten treats positive Y as down
-		bone.Pos.Y = -bone.Pos.Y
-
 		// center bone for scale & rot operations
 		size := skelform_go.Vec2{
 			X: texFields.Size.X / 2 * bone.Scale.X,
@@ -84,21 +104,21 @@ func Animate(screen *ebiten.Image, armature skelform_go.Armature, texture image.
 		bone.Pos.X -= size.X*float32(cos) + size.Y*float32(sin)
 		bone.Pos.Y += size.X*float32(sin) - size.Y*float32(cos)
 
-		op.GeoM.Scale(float64(bone.Scale.X*anim_options.Scale_factor), float64(bone.Scale.Y*anim_options.Scale_factor))
-		op.GeoM.Rotate(-float64(bone.Rot))
+		op.GeoM.Scale(float64(bone.Scale.X), float64(bone.Scale.Y))
+		op.GeoM.Rotate(float64(-bone.Rot))
 
-		final_pos := skelform_go.Vec2{
-			X: bone.Pos.X*anim_options.Scale_factor + anim_options.Pos_offset.X,
-			Y: bone.Pos.Y*anim_options.Scale_factor + anim_options.Pos_offset.Y,
-		}
-		op.GeoM.Translate(float64(final_pos.X), float64(final_pos.Y))
+		op.GeoM.Translate(float64(bone.Pos.X), float64(bone.Pos.Y))
 
 		screen.DrawImage(sub.(*ebiten.Image), op)
 	}
 }
 
-func Get_frame_by_time(anim skelform_go.Animation, unix_milli int64, reverse bool) int {
-	return skelform_go.Get_frame_by_time(anim, unix_milli, reverse)
+func FormatFrame(anim skelform_go.Animation, frame int, reverse bool, loop bool) int {
+	return skelform_go.FormatFrame(anim, frame, reverse, loop)
+}
+
+func TimeFrame(anim skelform_go.Animation, time time.Duration, reverse bool, loop bool) int {
+	return skelform_go.TimeFrame(anim, time, reverse, loop)
 }
 
 func Load(path string) (skelform_go.Root, image.Image) {
