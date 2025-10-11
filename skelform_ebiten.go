@@ -11,13 +11,15 @@ import (
 )
 
 type AnimOptions struct {
-	Position skelform_go.Vec2
-	Scale    float32
+	Position    skelform_go.Vec2
+	Scale       float32
+	BlendFrames int
 }
 
 func (ao *AnimOptions) Init() {
 	ao.Position = skelform_go.Vec2{X: 0, Y: 0}
 	ao.Scale = 0.25
+	ao.BlendFrames = 0
 }
 
 func Animate(
@@ -25,15 +27,15 @@ func Animate(
 	animations []skelform_go.Animation,
 	frames []int,
 	screen *ebiten.Image,
-	anim_options AnimOptions,
+	animOptions AnimOptions,
 ) []skelform_go.Bone {
+	for i := range animations {
+		skelform_go.Animate(armature.Bones, animations[i], frames[i], animOptions.BlendFrames)
+	}
+
 	var animatedBones []skelform_go.Bone
 	for _, bone := range armature.Bones {
 		animatedBones = append(animatedBones, bone)
-	}
-
-	for i := range animations {
-		skelform_go.Animate(animatedBones, animations[i], frames[i])
 	}
 
 	var inheritedBones []skelform_go.Bone
@@ -50,10 +52,10 @@ func Animate(
 
 	for b := range animatedBones {
 		bone := &animatedBones[b]
-		bone.Scale = bone.Scale.Mul(skelform_go.Vec2{X: anim_options.Scale, Y: anim_options.Scale})
+		bone.Scale = bone.Scale.Mul(skelform_go.Vec2{X: animOptions.Scale, Y: animOptions.Scale})
 		bone.Pos.Y = -bone.Pos.Y
-		bone.Pos = bone.Pos.Mul(skelform_go.Vec2{X: anim_options.Scale, Y: anim_options.Scale})
-		bone.Pos = bone.Pos.Add(anim_options.Position)
+		bone.Pos = bone.Pos.Mul(skelform_go.Vec2{X: animOptions.Scale, Y: animOptions.Scale})
+		bone.Pos = bone.Pos.Add(animOptions.Position)
 	}
 
 	return animatedBones
