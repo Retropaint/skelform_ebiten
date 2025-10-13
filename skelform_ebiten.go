@@ -12,13 +12,13 @@ import (
 
 type AnimOptions struct {
 	Position    skelform_go.Vec2
-	Scale       float32
+	Scale       skelform_go.Vec2
 	BlendFrames int
 }
 
 func (ao *AnimOptions) Init() {
 	ao.Position = skelform_go.Vec2{X: 0, Y: 0}
-	ao.Scale = 0.25
+	ao.Scale = skelform_go.Vec2{X: 0.25, Y: 0.25}
 	ao.BlendFrames = 0
 }
 
@@ -52,10 +52,17 @@ func Animate(
 
 	for b := range animatedBones {
 		bone := &animatedBones[b]
-		bone.Scale = bone.Scale.Mul(skelform_go.Vec2{X: animOptions.Scale, Y: animOptions.Scale})
+		bone.Scale = bone.Scale.Mul(animOptions.Scale)
 		bone.Pos.Y = -bone.Pos.Y
-		bone.Pos = bone.Pos.Mul(skelform_go.Vec2{X: animOptions.Scale, Y: animOptions.Scale})
+		bone.Pos = bone.Pos.Mul(animOptions.Scale)
 		bone.Pos = bone.Pos.Add(animOptions.Position)
+
+		// reverse rot if either scale is negative
+		either := animOptions.Scale.X > 0 || animOptions.Scale.Y > 0
+		both := animOptions.Scale.X > 0 && animOptions.Scale.Y > 0
+		if either && !both {
+			bone.Rot = -bone.Rot
+		}
 	}
 
 	return animatedBones
