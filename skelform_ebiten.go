@@ -58,8 +58,8 @@ func Animate(
 		bone.Pos = bone.Pos.Add(animOptions.Position)
 
 		// reverse rot if either scale is negative
-		either := animOptions.Scale.X > 0 || animOptions.Scale.Y > 0
-		both := animOptions.Scale.X > 0 && animOptions.Scale.Y > 0
+		either := animOptions.Scale.X < 0 || animOptions.Scale.Y < 0
+		both := animOptions.Scale.X < 0 && animOptions.Scale.Y < 0
 		if either && !both {
 			bone.Rot = -bone.Rot
 		}
