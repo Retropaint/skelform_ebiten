@@ -9,21 +9,23 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	// "github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/retropaint/skelform_go"
 	"github.com/retropaint/skelform_ebiten"
+	skf "github.com/retropaint/skelform_go"
 )
 
 type Game struct {
-	root       skelform_go.Root
-	texture    image.Image
-	frame      int
-	player_pos skelform_go.Vec2
-	moving     bool
-	start_time time.Time
+	skellington         skf.Root
+	witsy               skf.Root
+	skellington_texture image.Image
+	witsy_texture       image.Image
+	frame               int
+	player_pos          skf.Vec2
+	moving              bool
+	start_time          time.Time
 }
 
 func (g *Game) Update() error {
-	var speed float32 = 5
+	var speed float32 = 10
 	g.moving = false
 
 	var keys []ebiten.Key
@@ -41,6 +43,16 @@ func (g *Game) Update() error {
 		case ebiten.KeyD:
 			g.player_pos.X += speed
 			g.moving = true
+		case ebiten.KeyUp:
+			g.skellington.Armature.Bones[1].Pos.Y += speed
+		case ebiten.KeyRight:
+			g.skellington.Armature.Bones[1].Pos.X += speed
+		case ebiten.KeyLeft:
+			g.skellington.Armature.Bones[1].Pos.X -= speed
+		case ebiten.KeyDown:
+			g.skellington.Armature.Bones[1].Pos.Y -= speed
+		case ebiten.KeyF:
+			g.moving = true
 		}
 	}
 	return nil
@@ -50,16 +62,28 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	ao := skelform_ebiten.AnimOptions{}
 	ao.Init()
 
-	ao.Pos_offset = g.player_pos
+	ao.Position = g.player_pos
+	ao.BlendFrames = 0
 
-	anim_idx := 0
+	skel := &g.skellington.Armature
+
+	//idx := 0
 	if g.moving {
-		anim_idx = 1
+		//idx = 3
+		ao.BlendFrames = 20
 	}
 
-	elapsed := time.Now().UnixMilli() - g.start_time.UnixMilli()
-	time_frame := skelform_ebiten.Get_frame_by_time(g.root.Armature.Animations[anim_idx], elapsed, false)
-	skelform_ebiten.Animate(screen, g.root.Armature, g.texture, anim_idx, time_frame, ao)
+	tf0 := skf.TimeFrame(skel.Animations[0], time.Since(g.start_time), false, true)
+	tf1 := skelform_ebiten.TimeFrame(skel.Animations[1], time.Since(g.start_time), false, true)
+	animatedBones := skelform_ebiten.Animate(
+		skel,
+		[]skf.Animation{skel.Animations[0], skel.Animations[1]},
+		[]int{tf0, tf1},
+		screen,
+		ao,
+	)
+	skelform_ebiten.Draw(animatedBones, skel.Styles, g.skellington_texture, screen)
+
 	g.frame += 1
 }
 
@@ -70,13 +94,16 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func main() {
 	ebiten.SetWindowSize(1280, 720)
 	ebiten.SetWindowTitle("Hello, World!")
-	root, texture := skelform_ebiten.Load("skellington.skf")
+	skellington, skellington_texture := skelform_ebiten.Load("untitled.skf")
+	witsy, witsy_texture := skelform_ebiten.Load("witsy.skf")
 	size_x, size_y := ebiten.WindowSize()
 	if err := ebiten.RunGame(&Game{
-		root:       root,
-		texture:    texture,
-		start_time: time.Now(),
-		player_pos: skelform_go.Vec2{
+		skellington:         skellington,
+		witsy:               witsy,
+		skellington_texture: skellington_texture,
+		witsy_texture:       witsy_texture,
+		start_time:          time.Now(),
+		player_pos: skf.Vec2{
 			X: float32(size_x) / 2,
 			Y: float32(size_y) / 2,
 		},
