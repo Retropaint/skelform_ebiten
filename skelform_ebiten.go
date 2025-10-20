@@ -26,7 +26,6 @@ func Animate(
 	armature *skelform_go.Armature,
 	animations []skelform_go.Animation,
 	frames []int,
-	screen *ebiten.Image,
 	animOptions AnimOptions,
 ) []skelform_go.Bone {
 	for i := range animations {
@@ -37,6 +36,8 @@ func Animate(
 	for _, bone := range armature.Bones {
 		animatedBones = append(animatedBones, bone)
 	}
+
+	skelform_go.ResetBones(armature.Bones, animations, frames[0], animOptions.BlendFrames)
 
 	var inheritedBones []skelform_go.Bone
 	for _, bone := range animatedBones {
