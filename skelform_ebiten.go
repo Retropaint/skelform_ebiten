@@ -69,19 +69,17 @@ func Animate(
 	return animatedBones
 }
 
-func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture image.Image, screen *ebiten.Image) {
-	tex := ebiten.NewImageFromImage(texture)
-
+func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture *ebiten.Image, screen *ebiten.Image) {
 	sort.Slice(bones, func(i, j int) bool {
 		return bones[i].Zindex < bones[j].Zindex
 	})
 
-	for _, bone := range bones {
-		if len(bone.Style_ids) == 0 {
+	for b := range bones {
+		if len(bones[b].Style_ids) == 0 {
 			continue
 		}
 
-		texFields := styles[0].Textures[bone.Tex_idx]
+		texFields := styles[0].Textures[bones[b].Tex_idx]
 
 		// crop texture to this bone
 		tex_offset := skelform_go.Vec2{
@@ -92,7 +90,7 @@ func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture image.Im
 			X: texFields.Size.X,
 			Y: texFields.Size.Y,
 		}
-		sub := tex.SubImage(image.Rectangle{
+		sub := texture.SubImage(image.Rectangle{
 			Min: image.Point{
 				X: int(tex_offset.X),
 				Y: int(tex_offset.Y),
@@ -107,18 +105,18 @@ func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture image.Im
 
 		// center bone for scale & rot operations
 		size := skelform_go.Vec2{
-			X: texFields.Size.X / 2 * bone.Scale.X,
-			Y: texFields.Size.Y / 2 * bone.Scale.Y,
+			X: texFields.Size.X / 2 * bones[b].Scale.X,
+			Y: texFields.Size.Y / 2 * bones[b].Scale.Y,
 		}
-		cos := math.Cos(float64(bone.Rot))
-		sin := math.Sin(float64(bone.Rot))
-		bone.Pos.X -= size.X*float32(cos) + size.Y*float32(sin)
-		bone.Pos.Y += size.X*float32(sin) - size.Y*float32(cos)
+		cos := math.Cos(float64(bones[b].Rot))
+		sin := math.Sin(float64(bones[b].Rot))
+		bones[b].Pos.X -= size.X*float32(cos) + size.Y*float32(sin)
+		bones[b].Pos.Y += size.X*float32(sin) - size.Y*float32(cos)
 
-		op.GeoM.Scale(float64(bone.Scale.X), float64(bone.Scale.Y))
-		op.GeoM.Rotate(float64(-bone.Rot))
+		op.GeoM.Scale(float64(bones[b].Scale.X), float64(bones[b].Scale.Y))
+		op.GeoM.Rotate(float64(-bones[b].Rot))
 
-		op.GeoM.Translate(float64(bone.Pos.X), float64(bone.Pos.Y))
+		op.GeoM.Translate(float64(bones[b].Pos.X), float64(bones[b].Pos.Y))
 
 		screen.DrawImage(sub.(*ebiten.Image), op)
 	}
@@ -132,6 +130,6 @@ func TimeFrame(anim skelform_go.Animation, time time.Duration, reverse bool, loo
 	return skelform_go.TimeFrame(anim, time, reverse, loop)
 }
 
-func Load(path string) (skelform_go.Root, image.Image) {
+func Load(path string) (skelform_go.Armature, image.Image) {
 	return skelform_go.Load(path)
 }
