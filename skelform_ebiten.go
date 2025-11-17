@@ -41,10 +41,7 @@ func Construct(armature skelform_go.Armature, animOptions AnimOptions) []skelfor
 		inheritedBones = append(inheritedBones, bone)
 	}
 	skelform_go.Inheritance(inheritedBones, make(map[uint]float32))
-	var ikRots map[uint]float32
-	for i := 0; i < 10; i++ {
-		ikRots = skelform_go.InverseKinematics(inheritedBones, armature.Ik_families)
-	}
+	ikRots := skelform_go.InverseKinematics(inheritedBones, armature.Ik_families)
 
 	var finalBones []skelform_go.Bone
 	for _, bone := range armature.Bones {
@@ -95,7 +92,7 @@ func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture *ebiten.
 		texFields := styles[0].Textures[bones[b].Tex_idx]
 
 		if len(bones[b].Vertices) > 0 {
-			drawMesh(bones[b], texture, screen)
+			drawMesh(bones[b], texFields, texture, screen)
 			continue
 		}
 
@@ -140,15 +137,15 @@ func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture *ebiten.
 	}
 }
 
-func drawMesh(bone skelform_go.Bone, tex *ebiten.Image, screen *ebiten.Image) {
+func drawMesh(bone skelform_go.Bone, tex skelform_go.Texture, fullTex *ebiten.Image, screen *ebiten.Image) {
 	var verts []ebiten.Vertex
 	var indices []uint16
 	for _, vert := range bone.Vertices {
 		eb_vert := ebiten.Vertex{
 			DstX:   vert.Pos.X,
 			DstY:   vert.Pos.Y,
-			SrcX:   vert.Uv.X * float32(tex.Bounds().Dx()),
-			SrcY:   vert.Uv.Y * float32(tex.Bounds().Dy()),
+			SrcX:   tex.Offset.X + vert.Uv.X*float32(tex.Size.X),
+			SrcY:   tex.Offset.Y + vert.Uv.Y*float32(tex.Size.Y),
 			ColorR: 1,
 			ColorG: 1,
 			ColorB: 1,
@@ -159,7 +156,7 @@ func drawMesh(bone skelform_go.Bone, tex *ebiten.Image, screen *ebiten.Image) {
 	for _, idx := range bone.Indices {
 		indices = append(indices, uint16(idx))
 	}
-	screen.DrawTriangles(verts, indices, tex, &ebiten.DrawTrianglesOptions{})
+	screen.DrawTriangles(verts, indices, fullTex, &ebiten.DrawTrianglesOptions{})
 }
 
 func FormatFrame(anim skelform_go.Animation, frame int, reverse bool, loop bool) int {
