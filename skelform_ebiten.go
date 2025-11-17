@@ -26,33 +26,39 @@ func Animate(
 	armature *skelform_go.Armature,
 	animations []skelform_go.Animation,
 	frames []int,
-	animOptions AnimOptions,
-) []skelform_go.Bone {
+	blendFrames int,
+) {
 	for i := range animations {
-		skelform_go.Animate(armature.Bones, animations[i], frames[i], animOptions.BlendFrames)
+		skelform_go.Animate(armature.Bones, animations[i], frames[i], blendFrames)
 	}
 
-	var animatedBones []skelform_go.Bone
-	for _, bone := range armature.Bones {
-		animatedBones = append(animatedBones, bone)
-	}
+	skelform_go.ResetBones(armature.Bones, animations, frames[0], blendFrames)
+}
 
-	skelform_go.ResetBones(armature.Bones, animations, frames[0], animOptions.BlendFrames)
-
+func Construct(armature skelform_go.Armature, animOptions AnimOptions) []skelform_go.Bone {
 	var inheritedBones []skelform_go.Bone
-	for _, bone := range animatedBones {
+	for _, bone := range armature.Bones {
 		inheritedBones = append(inheritedBones, bone)
 	}
-
 	skelform_go.Inheritance(inheritedBones, make(map[uint]float32))
 	var ikRots map[uint]float32
 	for i := 0; i < 10; i++ {
 		ikRots = skelform_go.InverseKinematics(inheritedBones, armature.Ik_families)
 	}
-	skelform_go.Inheritance(animatedBones, ikRots)
 
-	for b := range animatedBones {
-		bone := &animatedBones[b]
+	var finalBones []skelform_go.Bone
+	for _, bone := range armature.Bones {
+		finalBones = append(finalBones, bone)
+		finalBones[len(finalBones)-1].Vertices = nil
+		for _, vert := range bone.Vertices {
+			finalBones[len(finalBones)-1].Vertices = append(finalBones[len(finalBones)-1].Vertices, vert)
+		}
+	}
+	skelform_go.Inheritance(finalBones, ikRots)
+	skelform_go.ConstructVerts(finalBones)
+
+	for b := range finalBones {
+		bone := &finalBones[b]
 		bone.Scale = bone.Scale.Mul(animOptions.Scale)
 		bone.Pos.Y = -bone.Pos.Y
 		bone.Pos = bone.Pos.Mul(animOptions.Scale)
@@ -64,9 +70,16 @@ func Animate(
 		if either && !both {
 			bone.Rot = -bone.Rot
 		}
+
+		for v := range finalBones[b].Vertices {
+			vert := &finalBones[b].Vertices[v]
+			vert.Pos.Y = -vert.Pos.Y
+			vert.Pos = vert.Pos.Mul(animOptions.Scale)
+			vert.Pos = vert.Pos.Add(animOptions.Position)
+		}
 	}
 
-	return animatedBones
+	return finalBones
 }
 
 func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture *ebiten.Image, screen *ebiten.Image) {
@@ -80,6 +93,11 @@ func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture *ebiten.
 		}
 
 		texFields := styles[0].Textures[bones[b].Tex_idx]
+
+		if len(bones[b].Vertices) > 0 {
+			drawMesh(bones[b], texture, screen)
+			continue
+		}
 
 		// crop texture to this bone
 		tex_offset := skelform_go.Vec2{
@@ -120,6 +138,28 @@ func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture *ebiten.
 
 		screen.DrawImage(sub.(*ebiten.Image), op)
 	}
+}
+
+func drawMesh(bone skelform_go.Bone, tex *ebiten.Image, screen *ebiten.Image) {
+	var verts []ebiten.Vertex
+	var indices []uint16
+	for _, vert := range bone.Vertices {
+		eb_vert := ebiten.Vertex{
+			DstX:   vert.Pos.X,
+			DstY:   vert.Pos.Y,
+			SrcX:   vert.Uv.X * float32(tex.Bounds().Dx()),
+			SrcY:   vert.Uv.Y * float32(tex.Bounds().Dy()),
+			ColorR: 1,
+			ColorG: 1,
+			ColorB: 1,
+			ColorA: 1,
+		}
+		verts = append(verts, eb_vert)
+	}
+	for _, idx := range bone.Indices {
+		indices = append(indices, uint16(idx))
+	}
+	screen.DrawTriangles(verts, indices, tex, &ebiten.DrawTrianglesOptions{})
 }
 
 func FormatFrame(anim skelform_go.Animation, frame int, reverse bool, loop bool) int {
