@@ -41,7 +41,7 @@ func Construct(armature skelform_go.Armature, animOptions AnimOptions) []skelfor
 		inheritedBones = append(inheritedBones, bone)
 	}
 	skelform_go.Inheritance(inheritedBones, make(map[uint]float32))
-	ikRots := skelform_go.InverseKinematics(inheritedBones, armature.Ik_families)
+	ikRots := skelform_go.InverseKinematics(inheritedBones, armature.Ik_root_ids)
 
 	var finalBones []skelform_go.Bone
 	for _, bone := range armature.Bones {
