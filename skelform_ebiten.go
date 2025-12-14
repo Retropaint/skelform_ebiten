@@ -22,37 +22,12 @@ func (ao *AnimOptions) Init() {
 	ao.BlendFrames = 0
 }
 
-func Animate(
-	armature *skelform_go.Armature,
-	animations []skelform_go.Animation,
-	frames []int,
-	blendFrames int,
-) {
-	for i := range animations {
-		skelform_go.Animate(armature.Bones, animations[i], frames[i], blendFrames)
-	}
-
-	skelform_go.ResetBones(armature.Bones, animations, frames[0], blendFrames)
+func Animate(armature *skelform_go.Armature, animations []skelform_go.Animation, frames []int, blendFrames []int) {
+	skelform_go.Animate(armature, animations, frames, blendFrames)
 }
 
 func Construct(armature skelform_go.Armature, animOptions AnimOptions) []skelform_go.Bone {
-	var inheritedBones []skelform_go.Bone
-	for _, bone := range armature.Bones {
-		inheritedBones = append(inheritedBones, bone)
-	}
-	skelform_go.Inheritance(inheritedBones, make(map[uint]float32))
-	ikRots := skelform_go.InverseKinematics(inheritedBones, armature.Ik_root_ids)
-
-	var finalBones []skelform_go.Bone
-	for _, bone := range armature.Bones {
-		finalBones = append(finalBones, bone)
-		finalBones[len(finalBones)-1].Vertices = nil
-		for _, vert := range bone.Vertices {
-			finalBones[len(finalBones)-1].Vertices = append(finalBones[len(finalBones)-1].Vertices, vert)
-		}
-	}
-	skelform_go.Inheritance(finalBones, ikRots)
-	skelform_go.ConstructVerts(finalBones)
+	finalBones := skelform_go.Construct(&armature)
 
 	for b := range finalBones {
 		bone := &finalBones[b]
@@ -61,12 +36,7 @@ func Construct(armature skelform_go.Armature, animOptions AnimOptions) []skelfor
 		bone.Pos = bone.Pos.Mul(animOptions.Scale)
 		bone.Pos = bone.Pos.Add(animOptions.Position)
 
-		// reverse rot if either scale is negative
-		either := animOptions.Scale.X < 0 || animOptions.Scale.Y < 0
-		both := animOptions.Scale.X < 0 && animOptions.Scale.Y < 0
-		if either && !both {
-			bone.Rot = -bone.Rot
-		}
+		skelform_go.CheckBoneFlip(bone, animOptions.Scale)
 
 		for v := range finalBones[b].Vertices {
 			vert := &finalBones[b].Vertices[v]
@@ -79,33 +49,34 @@ func Construct(armature skelform_go.Armature, animOptions AnimOptions) []skelfor
 	return finalBones
 }
 
-func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture *ebiten.Image, screen *ebiten.Image) {
+func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, textures []*ebiten.Image, screen *ebiten.Image) {
 	sort.Slice(bones, func(i, j int) bool {
 		return bones[i].Zindex < bones[j].Zindex
 	})
 
+	finalTextures := skelform_go.SetupBoneTextures(bones, styles)
+
 	for b := range bones {
-		if len(bones[b].Style_ids) == 0 {
+		tex, ok := finalTextures[uint(bones[b].Id)]
+		if !ok {
 			continue
 		}
 
-		texFields := styles[0].Textures[bones[b].Tex_idx]
-
 		if len(bones[b].Vertices) > 0 {
-			drawMesh(bones[b], texFields, texture, screen)
+			drawMesh(bones[b], tex, textures[tex.AtlasIdx], screen)
 			continue
 		}
 
 		// crop texture to this bone
 		tex_offset := skelform_go.Vec2{
-			X: texFields.Offset.X,
-			Y: texFields.Offset.Y,
+			X: tex.Offset.X,
+			Y: tex.Offset.Y,
 		}
 		tex_size := skelform_go.Vec2{
-			X: texFields.Size.X,
-			Y: texFields.Size.Y,
+			X: tex.Size.X,
+			Y: tex.Size.Y,
 		}
-		sub := texture.SubImage(image.Rectangle{
+		sub := textures[tex.AtlasIdx].SubImage(image.Rectangle{
 			Min: image.Point{
 				X: int(tex_offset.X),
 				Y: int(tex_offset.Y),
@@ -120,8 +91,8 @@ func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, texture *ebiten.
 
 		// center bone for scale & rot operations
 		size := skelform_go.Vec2{
-			X: texFields.Size.X / 2 * bones[b].Scale.X,
-			Y: texFields.Size.Y / 2 * bones[b].Scale.Y,
+			X: tex.Size.X / 2 * bones[b].Scale.X,
+			Y: tex.Size.Y / 2 * bones[b].Scale.Y,
 		}
 		cos := math.Cos(float64(bones[b].Rot))
 		sin := math.Sin(float64(bones[b].Rot))
@@ -167,6 +138,6 @@ func TimeFrame(anim skelform_go.Animation, time time.Duration, reverse bool, loo
 	return skelform_go.TimeFrame(anim, time, reverse, loop)
 }
 
-func Load(path string) (skelform_go.Armature, image.Image) {
+func Load(path string) (skelform_go.Armature, []image.Image) {
 	return skelform_go.Load(path)
 }
