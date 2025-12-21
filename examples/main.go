@@ -97,10 +97,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	bone("Left Shoulder Target", skel.Bones).Pos = mousePos
 	bone("Looker", skel.Bones).Pos = mousePos
 
-	// flip skull and hat if looking the other way
+	// flip skull and hat, and switch shoulder constraint, if looking the other way
+	shoulder := bone("LSIK", skel.Bones)
 	if (g.dir == 1 && mouseX < g.playerPos.X) || (g.dir == -1 && mouseX > g.playerPos.X) {
 		*skullScaleY = -abs(*skullScaleY)
 		*hatRot = -abs(*hatRot)
+		shoulder.Ik_constraint = 1
+	} else {
+		shoulder.Ik_constraint = 2
 	}
 
 	// construct and draw skellington
