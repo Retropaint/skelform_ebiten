@@ -1,25 +1,41 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"image/color"
 	"log"
 	"math"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 
 	// "github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	skf_e "github.com/retropaint/skelform_ebiten"
 	skf "github.com/retropaint/skelform_go"
 )
 
+var (
+	mplusFaceSource *text.GoTextFaceSource
+)
+
 type Game struct {
 	skellington skf.Armature
 	skelTex     []*ebiten.Image
+	skellina    skf.Armature
+	skelaTex    []*ebiten.Image
 	playerPos   skf.Vec2
 	moving      bool
-	start_time  time.Time
+	skelTime    time.Time
+	skelaTime   time.Time
 	dir         float32
+	style       int
+	velocityY   float32
+	lastAnimidx int
+	groundY     float32
 }
 
 func (g *Game) Update() error {
@@ -29,18 +45,20 @@ func (g *Game) Update() error {
 	var keys []ebiten.Key
 	for _, key := range inpututil.AppendJustPressedKeys(keys) {
 		switch key {
-		case ebiten.KeyA:
-			g.start_time = time.Now()
-		case ebiten.KeyD:
-			g.start_time = time.Now()
+		case ebiten.Key1:
+			g.style = 1
+		case ebiten.Key2:
+			g.style = 0
+		case ebiten.KeySpace:
+			g.velocityY = -10
 		}
 	}
 	for _, key := range inpututil.AppendJustReleasedKeys(keys) {
 		switch key {
 		case ebiten.KeyA:
-			g.start_time = time.Now()
+			g.skelTime = time.Now()
 		case ebiten.KeyD:
-			g.start_time = time.Now()
+			g.skelTime = time.Now()
 		}
 	}
 	for _, key := range inpututil.AppendPressedKeys(keys) {
@@ -55,10 +73,28 @@ func (g *Game) Update() error {
 			g.dir = 1
 		}
 	}
+
+	g.velocityY += 0.2
+	g.playerPos.Y += g.velocityY
+	if g.playerPos.Y > g.groundY {
+		g.playerPos.Y = g.groundY
+	}
+
 	return nil
 }
 
-func (g *Game) Draw(screen *ebiten.Image) {
+func (g *Game) Skellina(screen *ebiten.Image) {
+	skela := &g.skellina
+	tf0 := skf.TimeFrame(skela.Animations[2], time.Since(g.skelaTime), false, true)
+	anims := []skf.Animation{skela.Animations[2]}
+	skf_e.Animate(skela, anims, []int{tf0}, []int{20})
+	pos := skf.Vec2{X: 50, Y: g.playerPos.Y + 50}
+	animOptions := skf_e.AnimOptions{Scale: skf.Vec2{X: 0.125, Y: 0.125}, Position: pos}
+	finalBones := skf_e.Construct(*skela, animOptions)
+	skf_e.Draw(finalBones, skela.Styles, g.skelaTex, screen)
+}
+
+func (g *Game) Skellington(screen *ebiten.Image) {
 	animOptions := skf_e.AnimOptions{}
 	animOptions.Init()
 
@@ -73,6 +109,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.moving {
 		animIdx = 1
 	}
+	if g.velocityY < 0 {
+		animIdx = 2
+	} else if g.playerPos.Y != g.groundY {
+		animIdx = 3
+	}
+
+	if g.lastAnimidx != animIdx {
+		g.skelTime = time.Now()
+		g.lastAnimidx = animIdx
+	}
 
 	skullScaleY := &bone("Skull", skel.Bones).Scale.Y
 	hatRot := &bone("Hat", skel.Bones).Rot
@@ -83,7 +129,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	*hatRot = abs(*hatRot)
 
 	// animate skellington
-	tf0 := skf.TimeFrame(skel.Animations[animIdx], time.Since(g.start_time), false, true)
+	tf0 := skf.TimeFrame(skel.Animations[animIdx], time.Since(g.skelTime), false, true)
 	anims := []skf.Animation{skel.Animations[animIdx]}
 	skf_e.Animate(skel, anims, []int{tf0}, []int{20})
 
@@ -96,6 +142,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	bone("Left Shoulder Target", skel.Bones).Pos = mousePos
 	bone("Looker", skel.Bones).Pos = mousePos
+	if g.style == 0 {
+		bone("Hat", skel.Bones).Pos.Y = 520
+	} else {
+		bone("Hat", skel.Bones).Pos.Y = 600
+	}
 
 	// flip skull and hat, and switch shoulder constraint, if looking the other way
 	shoulder := bone("LSIK", skel.Bones)
@@ -109,7 +160,20 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// construct and draw skellington
 	finalBones := skf_e.Construct(*skel, animOptions)
-	skf_e.Draw(finalBones, skel.Styles, g.skelTex, screen)
+	skf_e.Draw(finalBones, []skf.Style{skel.Styles[g.style], skel.Styles[1]}, g.skelTex, screen)
+
+	msg := fmt.Sprintf("A - Move Left\nD - Move Right\nSpace - Jump\n1, 2 - Change outfit\nSkellington will look at and reach for cursor")
+	op := &text.DrawOptions{}
+	op.LayoutOptions.LineSpacing = 27
+	op.GeoM.Translate(10, 20)
+	op.ColorScale.ScaleWithColor(color.White)
+	text.Draw(screen, msg, &text.GoTextFace{Source: mplusFaceSource, Size: 20}, op)
+
+}
+
+func (g *Game) Draw(screen *ebiten.Image) {
+	g.Skellington(screen)
+	//g.Skellina(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
@@ -119,24 +183,43 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func main() {
 	ebiten.SetWindowSize(1280, 720)
 	ebiten.SetWindowTitle("SkelForm Basic Animation Demo")
-	skellington, textures := skf_e.Load("skellington.skf")
+	skellington, rawSkelTex := skf_e.Load("skellington.skf")
+	skellina, rawSkelaTex := skf_e.Load("skellina.skf")
 	size_x, size_y := ebiten.WindowSize()
-	var ebTex []*ebiten.Image
-	for _, tex := range textures {
-		ebTex = append(ebTex, ebiten.NewImageFromImage(tex))
+	var ebSkelTex []*ebiten.Image
+	var ebSkelaTex []*ebiten.Image
+	for _, tex := range rawSkelTex {
+		ebSkelTex = append(ebSkelTex, ebiten.NewImageFromImage(tex))
 	}
+	for _, tex := range rawSkelaTex {
+		ebSkelaTex = append(ebSkelaTex, ebiten.NewImageFromImage(tex))
+	}
+	groundY := float32(size_y)/2 + 50
 	if err := ebiten.RunGame(&Game{
 		skellington: skellington,
-		skelTex:     ebTex,
+		skelTex:     ebSkelTex,
+		skellina:    skellina,
+		skelaTex:    ebSkelaTex,
 		dir:         1,
-		start_time:  time.Now(),
+		skelTime:    time.Now(),
+		skelaTime:   time.Now(),
+		style:       1,
+		groundY:     groundY,
 		playerPos: skf.Vec2{
 			X: float32(size_x) / 2,
-			Y: float32(size_y) / 2,
+			Y: groundY,
 		},
 	}); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func init() {
+	s, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
+	if err != nil {
+		log.Fatal(err)
+	}
+	mplusFaceSource = s
 }
 
 func abs(value float32) float32 {
