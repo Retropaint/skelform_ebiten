@@ -10,45 +10,59 @@ import (
 	"github.com/retropaint/skelform_go"
 )
 
-type AnimOptions struct {
-	Position    skelform_go.Vec2
-	Scale       skelform_go.Vec2
-	BlendFrames int
+// Options for `Construct()`.
+//
+// Position: adds each bone's position by this much
+// Scale: multiplies each bone's scale by this much
+type ConstructOptions struct {
+	Position skelform_go.Vec2
+	Scale    skelform_go.Vec2
 }
 
-func (ao *AnimOptions) Init() {
-	ao.Position = skelform_go.Vec2{X: 0, Y: 0}
-	ao.Scale = skelform_go.Vec2{X: 0.25, Y: 0.25}
-	ao.BlendFrames = 0
+func (co *ConstructOptions) Init() {
+	co.Position = skelform_go.Vec2{X: 0, Y: 0}
+	co.Scale = skelform_go.Vec2{X: 0.25, Y: 0.25}
 }
 
-func Animate(armature *skelform_go.Armature, animations []skelform_go.Animation, frames []int, blendFrames []int) {
-	skelform_go.Animate(armature, animations, frames, blendFrames)
+// Transforms an armature's bones based on the provided animation(s) and their frame(s).
+//
+// `smoothFrames` is used to smoothly interpolate transforms. Mainly used for smooth animation transitions. Higher frames are smoother.
+//
+// Note: smoothFrames should ideally be set to 0 (or empty) when reversing animations.
+func Animate(armature *skelform_go.Armature, animations []skelform_go.Animation, frames []int, smoothFrames []int) {
+	skelform_go.Animate(armature, animations, frames, smoothFrames)
 }
 
-func Construct(armature skelform_go.Armature, animOptions AnimOptions) []skelform_go.Bone {
+// Returns the constructed array of bones from this armature.
+//
+// While constructing, several options (positional offset, scale) may be set.
+func Construct(armature skelform_go.Armature, constOptions ConstructOptions) []skelform_go.Bone {
 	finalBones := skelform_go.Construct(&armature)
 
 	for b := range finalBones {
 		bone := &finalBones[b]
-		bone.Scale = bone.Scale.Mul(animOptions.Scale)
+		bone.Scale = bone.Scale.Mul(constOptions.Scale)
 		bone.Pos.Y = -bone.Pos.Y
-		bone.Pos = bone.Pos.Mul(animOptions.Scale)
-		bone.Pos = bone.Pos.Add(animOptions.Position)
+		bone.Pos = bone.Pos.Mul(constOptions.Scale)
+		bone.Pos = bone.Pos.Add(constOptions.Position)
 
-		skelform_go.CheckBoneFlip(bone, animOptions.Scale)
+		skelform_go.CheckBoneFlip(bone, constOptions.Scale)
 
 		for v := range finalBones[b].Vertices {
 			vert := &finalBones[b].Vertices[v]
 			vert.Pos.Y = -vert.Pos.Y
-			vert.Pos = vert.Pos.Mul(animOptions.Scale)
-			vert.Pos = vert.Pos.Add(animOptions.Position)
+			vert.Pos = vert.Pos.Mul(constOptions.Scale)
+			vert.Pos = vert.Pos.Add(constOptions.Position)
 		}
 	}
 
 	return finalBones
 }
 
+// Draws the bones to the provided screen, using the provided styles and textures.
+//
+// Recommended: include the whole texture array from the file even if not all will be used,
+// as the provided styles will determine the final appearance.
 func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, textures []*ebiten.Image, screen *ebiten.Image) {
 	sort.Slice(bones, func(i, j int) bool {
 		return bones[i].Zindex < bones[j].Zindex
@@ -130,14 +144,17 @@ func drawMesh(bone skelform_go.Bone, tex skelform_go.Texture, fullTex *ebiten.Im
 	screen.DrawTriangles(verts, indices, fullTex, &ebiten.DrawTrianglesOptions{})
 }
 
+// Returns the properly bound animation frame based on the provided animation.
 func FormatFrame(anim skelform_go.Animation, frame int, reverse bool, loop bool) int {
 	return skelform_go.FormatFrame(anim, frame, reverse, loop)
 }
 
+// Returns the animation frame based on the provided time.
 func TimeFrame(anim skelform_go.Animation, time time.Duration, reverse bool, loop bool) int {
 	return skelform_go.TimeFrame(anim, time, reverse, loop)
 }
 
+// Loads an `.skf` file.
 func Load(path string) (skelform_go.Armature, []image.Image) {
 	return skelform_go.Load(path)
 }
