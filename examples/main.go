@@ -89,20 +89,19 @@ func (g *Game) Skellina(screen *ebiten.Image) {
 	anims := []skf.Animation{skela.Animations[2]}
 	skf_e.Animate(skela, anims, []int{tf0}, []int{20})
 	pos := skf.Vec2{X: 50, Y: g.playerPos.Y + 50}
-	animOptions := skf_e.AnimOptions{Scale: skf.Vec2{X: 0.125, Y: 0.125}, Position: pos}
-	finalBones := skf_e.Construct(*skela, animOptions)
+	constructOptions := skf_e.ConstructOptions{Scale: skf.Vec2{X: 0.125, Y: 0.125}, Position: pos}
+	finalBones := skf_e.Construct(*skela, constructOptions)
 	skf_e.Draw(finalBones, skela.Styles, g.skelaTex, screen)
 }
 
 func (g *Game) Skellington(screen *ebiten.Image) {
-	animOptions := skf_e.AnimOptions{}
-	animOptions.Init()
+	constructOptions := skf_e.ConstructOptions{}
+	constructOptions.Init()
 
 	skelScale := float32(0.125)
-	animOptions.Position = g.playerPos
-	animOptions.Scale = skf.Vec2{X: skelScale, Y: skelScale}
-	animOptions.Scale.X *= g.dir
-	animOptions.BlendFrames = 10
+	constructOptions.Position = g.playerPos
+	constructOptions.Scale = skf.Vec2{X: skelScale, Y: skelScale}
+	constructOptions.Scale.X *= g.dir
 
 	skel := &g.skellington
 	animIdx := 0
@@ -159,7 +158,7 @@ func (g *Game) Skellington(screen *ebiten.Image) {
 	}
 
 	// construct and draw skellington
-	finalBones := skf_e.Construct(*skel, animOptions)
+	finalBones := skf_e.Construct(*skel, constructOptions)
 	skf_e.Draw(finalBones, []skf.Style{skel.Styles[g.style], skel.Styles[1]}, g.skelTex, screen)
 
 	msg := fmt.Sprintf("A - Move Left\nD - Move Right\nSpace - Jump\n1, 2 - Change outfit\nSkellington will look at and reach for cursor")
