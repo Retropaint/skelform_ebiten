@@ -1,12 +1,30 @@
 Library for running [SkelForm](https://skelform.org) animations in
 [Ebitengine](https://ebitengine.org/).
 
+## Interactive Example
+
+```
+go run github.com/retropaint/skelform_ebiten/examples/character@v0
+```
+
+Example includes:
+
+- Simple state-based animations (idling, running, jumping, landing)
+- Inverse kinematics
+- Mesh deformation
+- 2 styles
+
+## Importing
+
 ```
 import (
   skf_e "github.com/retropaint/skelform_ebiten"
   skf "github.com/retropaint/skelform_go"
 )
 ```
+
+Note: you may need to import `skelform_go` as well for certain structs (`Vec2`,
+`Bone`, etc).
 
 ## Basic Setup
 
