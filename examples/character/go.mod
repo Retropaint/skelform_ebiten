@@ -4,11 +4,11 @@ go 1.23.4
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.8.8
-	github.com/retropaint/skelform_ebiten v0.1.5
+	github.com/retropaint/skelform_ebiten v0.2.1
 	github.com/retropaint/skelform_go v0.2.0
 )
 
-replace github.com/retropaint/skelform_ebiten => ../
+replace github.com/retropaint/skelform_ebiten => ../../
 
 // replace github.com/retropaint/skelform_go => ../../skelform_go
 

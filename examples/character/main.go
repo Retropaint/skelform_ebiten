@@ -182,23 +182,15 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func main() {
 	ebiten.SetWindowSize(1280, 720)
 	ebiten.SetWindowTitle("SkelForm Basic Animation Demo")
-	skellington, rawSkelTex := skf_e.Load("skellington.skf")
-	skellina, rawSkelaTex := skf_e.Load("skellina.skf")
+	skellington, skelTex := skf_e.Load("skellington.skf")
+	skellina, skelaTex := skf_e.Load("skellina.skf")
 	size_x, size_y := ebiten.WindowSize()
-	var ebSkelTex []*ebiten.Image
-	var ebSkelaTex []*ebiten.Image
-	for _, tex := range rawSkelTex {
-		ebSkelTex = append(ebSkelTex, ebiten.NewImageFromImage(tex))
-	}
-	for _, tex := range rawSkelaTex {
-		ebSkelaTex = append(ebSkelaTex, ebiten.NewImageFromImage(tex))
-	}
 	groundY := float32(size_y)/2 + 50
 	if err := ebiten.RunGame(&Game{
 		skellington: skellington,
-		skelTex:     ebSkelTex,
+		skelTex:     skelTex,
 		skellina:    skellina,
-		skelaTex:    ebSkelaTex,
+		skelaTex:    skelaTex,
 		dir:         1,
 		skelTime:    time.Now(),
 		skelaTime:   time.Now(),
