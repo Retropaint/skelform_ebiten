@@ -155,6 +155,11 @@ func TimeFrame(anim skelform_go.Animation, time time.Duration, reverse bool, loo
 }
 
 // Loads an `.skf` file.
-func Load(path string) (skelform_go.Armature, []image.Image) {
-	return skelform_go.Load(path)
+func Load(path string) (skelform_go.Armature, []*ebiten.Image) {
+	armature, textures := skelform_go.Load(path)
+	var ebTextures []*ebiten.Image
+	for _, tex := range textures {
+		ebTextures = append(ebTextures, ebiten.NewImageFromImage(tex))
+	}
+	return armature, ebTextures
 }
