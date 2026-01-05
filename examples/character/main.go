@@ -6,6 +6,8 @@ import (
 	"image/color"
 	"log"
 	"math"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -36,6 +38,13 @@ type Game struct {
 	velocityY   float32
 	lastAnimidx int
 	groundY     float32
+}
+
+// ensures .skf files can be loaded from `go run`,
+// not needed in actual projects  
+func assetPath(name string) string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(file), name)
 }
 
 func (g *Game) Update() error {
@@ -182,8 +191,8 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func main() {
 	ebiten.SetWindowSize(1280, 720)
 	ebiten.SetWindowTitle("SkelForm Basic Animation Demo")
-	skellington, skelTex := skf_e.Load("skellington.skf")
-	skellina, skelaTex := skf_e.Load("skellina.skf")
+	skellington, skelTex := skf_e.Load(assetPath("skellington.skf"))
+	skellina, skelaTex := skf_e.Load(assetPath("skellina.skf"))
 	size_x, size_y := ebiten.WindowSize()
 	groundY := float32(size_y)/2 + 50
 	if err := ebiten.RunGame(&Game{
