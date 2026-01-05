@@ -8,7 +8,7 @@ require (
 	github.com/retropaint/skelform_go v0.2.0
 )
 
-replace github.com/retropaint/skelform_ebiten => ../../
+// replace github.com/retropaint/skelform_ebiten => ../../
 
 // replace github.com/retropaint/skelform_go => ../../skelform_go
 
