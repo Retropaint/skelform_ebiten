@@ -18,6 +18,8 @@ github.com/pierrec/lz4/v4 v4.1.21 h1:yOVMLb6qSIDP67pl/5F7RepeKYu/VmTyEXvuMI5d9mQ
 github.com/pierrec/lz4/v4 v4.1.21/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/retropaint/skelform_go v0.2.0 h1:oH91g84ThQXM3EosSZd3ngaRS8Ou8LIbRqjngqd1UMU=
 github.com/retropaint/skelform_go v0.2.0/go.mod h1:EREgHaGZt1RKDfRVGhL85Zw/4Juxxh8KpKOf9ywbYUE=
+github.com/retropaint/skelform_go v0.4.0 h1:nWlfv9nMitOfE/kU04CPPA9ytUY/8L/7Kof6y5lFR8U=
+github.com/retropaint/skelform_go v0.4.0/go.mod h1:EREgHaGZt1RKDfRVGhL85Zw/4Juxxh8KpKOf9ywbYUE=
 golang.org/x/image v0.20.0 h1:7cVCUjQwfL18gyBJOmYvptfSHS8Fb3YUDtfLIZ7Nbpw=
 golang.org/x/image v0.20.0/go.mod h1:0a88To4CYVBAHp5FXJm8o7QbUl37Vd85ply1vyD8auM=
 golang.org/x/sync v0.8.0 h1:3NFvSEYkUoMifnESzZl15y791HH1qU2xm6eCJU5ZPXQ=

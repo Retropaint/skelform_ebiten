@@ -161,9 +161,9 @@ func (g *Game) Skellington(screen *ebiten.Image) {
 	if (g.dir == 1 && mouseX < g.playerPos.X) || (g.dir == -1 && mouseX > g.playerPos.X) {
 		*skullScaleY = -abs(*skullScaleY)
 		*hatRot = -abs(*hatRot)
-		shoulder.Ik_constraint = 1
+		shoulder.Ik_constraint = "Clockwise"
 	} else {
-		shoulder.Ik_constraint = 2
+		shoulder.Ik_constraint = "CounterClockwise"
 	}
 
 	// construct and draw skellington
