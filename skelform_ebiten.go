@@ -36,11 +36,12 @@ func Animate(armature *skelform_go.Armature, animations []skelform_go.Animation,
 // Returns the constructed array of bones from this armature.
 //
 // While constructing, several options (positional offset, scale) may be set.
-func Construct(armature skelform_go.Armature, constOptions ConstructOptions) []skelform_go.Bone {
-	finalBones := skelform_go.Construct(&armature)
+func Construct(armature *skelform_go.Armature, constOptions ConstructOptions) {
+	skelform_go.Construct(armature)
 
-	for b := range finalBones {
-		bone := &finalBones[b]
+	for b := range armature.Constructed_bones {
+		bone := &armature.Constructed_bones[b]
+
 		bone.Scale = bone.Scale.Mul(constOptions.Scale)
 		bone.Pos.Y = -bone.Pos.Y
 		bone.Pos = bone.Pos.Mul(constOptions.Scale)
@@ -48,15 +49,14 @@ func Construct(armature skelform_go.Armature, constOptions ConstructOptions) []s
 
 		skelform_go.CheckBoneFlip(bone, constOptions.Scale)
 
-		for v := range finalBones[b].Vertices {
-			vert := &finalBones[b].Vertices[v]
+		for v := range armature.Constructed_bones[b].Vertices {
+			vert := &armature.Constructed_bones[b].Vertices[v]
+
 			vert.Pos.Y = -vert.Pos.Y
 			vert.Pos = vert.Pos.Mul(constOptions.Scale)
 			vert.Pos = vert.Pos.Add(constOptions.Position)
 		}
 	}
-
-	return finalBones
 }
 
 // Draws the bones to the provided screen, using the provided styles and textures.
