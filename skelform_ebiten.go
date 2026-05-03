@@ -17,6 +17,7 @@ import (
 type ConstructOptions struct {
 	Position skelform_go.Vec2
 	Scale    skelform_go.Vec2
+	Velocity skelform_go.Vec2
 }
 
 func (co *ConstructOptions) Init() {
@@ -48,6 +49,8 @@ func Construct(armature *skelform_go.Armature, constOptions ConstructOptions) {
 		bone.Pos = bone.Pos.Add(constOptions.Position)
 
 		skelform_go.CheckBoneFlip(bone, constOptions.Scale)
+
+		armature.Bones[b].Phys_global_pos = armature.Bones[b].Phys_global_pos.Sub(constOptions.Velocity)
 
 		for v := range armature.Constructed_bones[b].Vertices {
 			vert := &armature.Constructed_bones[b].Vertices[v]
