@@ -18,6 +18,9 @@ import (
 	// "github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	skf_e "github.com/retropaint/skelform_ebiten"
 	skf "github.com/retropaint/skelform_go"
+
+	"net/http"
+	_ "net/http/pprof"
 )
 
 var (
@@ -25,23 +28,24 @@ var (
 )
 
 type Game struct {
-	skellington skf.Armature
-	skelTex     []*ebiten.Image
-	skellina    skf.Armature
-	skelaTex    []*ebiten.Image
-	playerPos   skf.Vec2
-	moving      bool
-	skelTime    time.Time
-	skelaTime   time.Time
-	dir         float32
-	style       int
-	velocityY   float32
-	lastAnimidx int
-	groundY     float32
+	skellington   skf.Armature
+	skelTex       []*ebiten.Image
+	skellina      skf.Armature
+	skelaTex      []*ebiten.Image
+	playerPos     skf.Vec2
+	lastPlayerPos skf.Vec2
+	moving        bool
+	skelTime      time.Time
+	skelaTime     time.Time
+	dir           float32
+	style         int
+	velocityY     float32
+	lastAnimidx   int
+	groundY       float32
 }
 
 // ensures .skf files can be loaded from `go run`,
-// not needed in actual projects  
+// not needed in actual projects
 func assetPath(name string) string {
 	_, file, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(file), name)
@@ -99,8 +103,8 @@ func (g *Game) Skellina(screen *ebiten.Image) {
 	skf_e.Animate(skela, anims, []int{tf0}, []int{20})
 	pos := skf.Vec2{X: 50, Y: g.playerPos.Y + 50}
 	constructOptions := skf_e.ConstructOptions{Scale: skf.Vec2{X: 0.125, Y: 0.125}, Position: pos}
-	finalBones := skf_e.Construct(*skela, constructOptions)
-	skf_e.Draw(finalBones, skela.Styles, g.skelaTex, screen)
+	skf_e.Construct(skela, constructOptions)
+	skf_e.Draw(skela.Constructed_bones, skela.Visuals, skela.Styles, g.skelaTex, screen)
 }
 
 func (g *Game) Skellington(screen *ebiten.Image) {
@@ -111,6 +115,9 @@ func (g *Game) Skellington(screen *ebiten.Image) {
 	constructOptions.Position = g.playerPos
 	constructOptions.Scale = skf.Vec2{X: skelScale, Y: skelScale}
 	constructOptions.Scale.X *= g.dir
+	//constructOptions.Velocity = g.playerPos.Sub(g.lastPlayerPos).Mulf(2)
+	constructOptions.Velocity.X *= g.dir
+	constructOptions.Velocity.Y *= -1
 
 	skel := &g.skellington
 	animIdx := 0
@@ -128,13 +135,13 @@ func (g *Game) Skellington(screen *ebiten.Image) {
 		g.lastAnimidx = animIdx
 	}
 
-	skullScaleY := &bone("Skull", skel.Bones).Scale.Y
-	hatRot := &bone("Hat", skel.Bones).Rot
+	//skullScaleY := &bone("Skull", skel.Bones).Scale.Y
+	//hatRot := &bone("Hat", skel.Bones).Rot
 
 	// skull and hat might be negative from previous frame if looking the other way,
 	// so they need to be reset to prevent interpolation from animate()
-	*skullScaleY = abs(*skullScaleY)
-	*hatRot = abs(*hatRot)
+	//*skullScaleY = abs(*skullScaleY)
+	//*hatRot = abs(*hatRot)
 
 	// animate skellington
 	tf0 := skf.TimeFrame(skel.Animations[animIdx], time.Since(g.skelTime), false, true)
@@ -142,33 +149,33 @@ func (g *Game) Skellington(screen *ebiten.Image) {
 	skf_e.Animate(skel, anims, []int{tf0}, []int{20})
 
 	// point left shoulder and head to mouse
-	mx, my := ebiten.CursorPosition()
-	mouseX, mouseY := float32(mx), float32(my)
-	mousePos := skf.Vec2{
-		X: (-g.playerPos.X/skelScale + mouseX/skelScale) * g.dir,
-		Y: g.playerPos.Y/skelScale - mouseY/skelScale,
-	}
-	bone("Left Shoulder Target", skel.Bones).Pos = mousePos
-	bone("Looker", skel.Bones).Pos = mousePos
-	if g.style == 0 {
-		bone("Hat", skel.Bones).Pos.Y = 520
-	} else {
-		bone("Hat", skel.Bones).Pos.Y = 600
-	}
+	//mx, my := ebiten.CursorPosition()
+	//mouseX, mouseY := float32(mx), float32(my)
+	//mousePos := skf.Vec2{
+	//	X: (-g.playerPos.X/skelScale + mouseX/skelScale) * g.dir,
+	//	Y: g.playerPos.Y/skelScale - mouseY/skelScale,
+	//}
+	//bone("Left Shoulder Target", skel.Bones).Pos = mousePos
+	//bone("Looker", skel.Bones).Pos = mousePos
+	//if g.style == 0 {
+	//	bone("Hat", skel.Bones).Pos.Y = 520
+	//} else {
+	//	bone("Hat", skel.Bones).Pos.Y = 600
+	//}
 
 	// flip skull and hat, and switch shoulder constraint, if looking the other way
-	shoulder := bone("LSIK", skel.Bones)
-	if (g.dir == 1 && mouseX < g.playerPos.X) || (g.dir == -1 && mouseX > g.playerPos.X) {
-		*skullScaleY = -abs(*skullScaleY)
-		*hatRot = -abs(*hatRot)
-		shoulder.Ik_constraint = "Clockwise"
-	} else {
-		shoulder.Ik_constraint = "CounterClockwise"
-	}
+	//shoulder := bone("LSIK", skel.Bones)
+	//if (g.dir == 1 && mouseX < g.playerPos.X) || (g.dir == -1 && mouseX > g.playerPos.X) {
+	//	*skullScaleY = -abs(*skullScaleY)
+	//	*hatRot = -abs(*hatRot)
+	//	shoulder.Ik_constraint = "Clockwise"
+	//} else {
+	//	shoulder.Ik_constraint = "CounterClockwise"
+	//}
 
 	// construct and draw skellington
-	finalBones := skf_e.Construct(*skel, constructOptions)
-	skf_e.Draw(finalBones, []skf.Style{skel.Styles[g.style], skel.Styles[1]}, g.skelTex, screen)
+	skf_e.Construct(skel, constructOptions)
+	skf_e.Draw(skel.Constructed_bones, skel.Visuals, []skf.Style{skel.Styles[3]}, g.skelTex, screen)
 
 	msg := fmt.Sprintf("A - Move Left\nD - Move Right\nSpace - Jump\n1, 2 - Change outfit\nSkellington will look at and reach for cursor")
 	op := &text.DrawOptions{}
@@ -176,7 +183,7 @@ func (g *Game) Skellington(screen *ebiten.Image) {
 	op.GeoM.Translate(10, 20)
 	op.ColorScale.ScaleWithColor(color.White)
 	text.Draw(screen, msg, &text.GoTextFace{Source: mplusFaceSource, Size: 20}, op)
-
+	g.lastPlayerPos = g.playerPos
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
@@ -189,6 +196,9 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func main() {
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
 	ebiten.SetWindowSize(1280, 720)
 	ebiten.SetWindowTitle("SkelForm Basic Animation Demo")
 	skellington, skelTex := skf_e.Load(assetPath("skellington.skf"))

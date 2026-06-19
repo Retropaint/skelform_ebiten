@@ -50,15 +50,22 @@ func Construct(armature *skelform_go.Armature, constOptions ConstructOptions) {
 
 		skelform_go.CheckBoneFlip(bone, constOptions.Scale)
 
-		armature.Bones[b].Phys_global_pos = armature.Bones[b].Phys_global_pos.Sub(constOptions.Velocity)
-
-		for v := range armature.Constructed_bones[b].Vertices {
-			vert := &armature.Constructed_bones[b].Vertices[v]
-
-			vert.Pos.Y = -vert.Pos.Y
-			vert.Pos = vert.Pos.Mul(constOptions.Scale)
-			vert.Pos = vert.Pos.Add(constOptions.Position)
+		if armature.Bones[b].Physics_id != -1 {
+			phys := armature.Physics[armature.Bones[b].Physics_id]
+			phys.Global_pos = phys.Global_pos.Sub(constOptions.Velocity)
 		}
+
+		if armature.Bones[b].Visuals_id != -1 {
+			visual := armature.Visuals[armature.Bones[b].Visuals_id]
+			for v := range visual.Vertices {
+				vert := &visual.Vertices[v]
+
+				vert.Pos.Y = -vert.Pos.Y
+				vert.Pos = vert.Pos.Mul(constOptions.Scale)
+				vert.Pos = vert.Pos.Add(constOptions.Position)
+			}
+		}
+
 	}
 }
 
@@ -66,21 +73,29 @@ func Construct(armature *skelform_go.Armature, constOptions ConstructOptions) {
 //
 // Recommended: include the whole texture array from the file even if not all will be used,
 // as the provided styles will determine the final appearance.
-func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, textures []*ebiten.Image, screen *ebiten.Image) {
+func Draw(bones []skelform_go.Bone, visuals []skelform_go.Visuals, styles []skelform_go.Style, textures []*ebiten.Image, screen *ebiten.Image) {
 	sort.Slice(bones, func(i, j int) bool {
-		return bones[i].Zindex < bones[j].Zindex
+		if bones[i].Visuals_id == -1 || bones[j].Visuals_id == -1 {
+			return false
+		}
+		visualsA := visuals[bones[i].Visuals_id]
+		visualsB := visuals[bones[j].Visuals_id]
+		return visualsA.Zindex < visualsB.Zindex
 	})
 
-	finalTextures := skelform_go.SetupBoneTextures(bones, styles)
+	for _, bone := range bones {
+		if bone.Visuals_id == -1 {
+			continue
+		}
+		visual := visuals[bone.Visuals_id]
 
-	for b := range bones {
-		tex, ok := finalTextures[uint(bones[b].Id)]
-		if !ok {
+		tex, err := skelform_go.GetBoneTexture(visual.Tex, styles)
+		if err != nil {
 			continue
 		}
 
-		if len(bones[b].Vertices) > 0 {
-			drawMesh(bones[b], tex, textures[tex.AtlasIdx], screen)
+		if len(visual.Vertices) > 0 {
+			drawMesh(visual, tex, textures[tex.AtlasIdx], screen)
 			continue
 		}
 
@@ -108,27 +123,27 @@ func Draw(bones []skelform_go.Bone, styles []skelform_go.Style, textures []*ebit
 
 		// center bone for scale & rot operations
 		size := skelform_go.Vec2{
-			X: tex.Size.X / 2 * bones[b].Scale.X,
-			Y: tex.Size.Y / 2 * bones[b].Scale.Y,
+			X: tex.Size.X / 2 * bone.Scale.X,
+			Y: tex.Size.Y / 2 * bone.Scale.Y,
 		}
-		cos := math.Cos(float64(bones[b].Rot))
-		sin := math.Sin(float64(bones[b].Rot))
-		bones[b].Pos.X -= size.X*float32(cos) + size.Y*float32(sin)
-		bones[b].Pos.Y += size.X*float32(sin) - size.Y*float32(cos)
+		cos := math.Cos(float64(bone.Rot))
+		sin := math.Sin(float64(bone.Rot))
+		bone.Pos.X -= size.X*float32(cos) + size.Y*float32(sin)
+		bone.Pos.Y += size.X*float32(sin) - size.Y*float32(cos)
 
-		op.GeoM.Scale(float64(bones[b].Scale.X), float64(bones[b].Scale.Y))
-		op.GeoM.Rotate(float64(-bones[b].Rot))
+		op.GeoM.Scale(float64(bone.Scale.X), float64(bone.Scale.Y))
+		op.GeoM.Rotate(float64(-bone.Rot))
 
-		op.GeoM.Translate(float64(bones[b].Pos.X), float64(bones[b].Pos.Y))
+		op.GeoM.Translate(float64(bone.Pos.X), float64(bone.Pos.Y))
 
 		screen.DrawImage(sub.(*ebiten.Image), op)
 	}
 }
 
-func drawMesh(bone skelform_go.Bone, tex skelform_go.Texture, fullTex *ebiten.Image, screen *ebiten.Image) {
+func drawMesh(visual skelform_go.Visuals, tex skelform_go.Texture, fullTex *ebiten.Image, screen *ebiten.Image) {
 	var verts []ebiten.Vertex
 	var indices []uint16
-	for _, vert := range bone.Vertices {
+	for _, vert := range visual.Vertices {
 		eb_vert := ebiten.Vertex{
 			DstX:   vert.Pos.X,
 			DstY:   vert.Pos.Y,
@@ -141,7 +156,7 @@ func drawMesh(bone skelform_go.Bone, tex skelform_go.Texture, fullTex *ebiten.Im
 		}
 		verts = append(verts, eb_vert)
 	}
-	for _, idx := range bone.Indices {
+	for _, idx := range visual.Indices {
 		indices = append(indices, uint16(idx))
 	}
 	screen.DrawTriangles(verts, indices, fullTex, &ebiten.DrawTrianglesOptions{})

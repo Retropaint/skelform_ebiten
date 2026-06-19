@@ -7,7 +7,7 @@ require (
 	github.com/retropaint/skelform_go v0.4.0
 )
 
-// replace github.com/retropaint/skelform_go => ../skelform_go
+replace github.com/retropaint/skelform_go => ../skelform_go
 
 require (
 	github.com/ebitengine/gomobile v0.0.0-20240911145611-4856209ac325 // indirect
