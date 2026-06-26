@@ -48,7 +48,9 @@ func Construct(armature *skelform_go.Armature, constOptions ConstructOptions) {
 		bone.Pos = bone.Pos.Mul(constOptions.Scale)
 		bone.Pos = bone.Pos.Add(constOptions.Position)
 
-		skelform_go.CheckBoneFlip(bone, constOptions.Scale)
+		if skelform_go.IsFacingLeft(constOptions.Scale) {
+			bone.Rot = -bone.Rot
+		}
 
 		if armature.Bones[b].Physics_id != -1 {
 			phys := armature.Physics[armature.Bones[b].Physics_id]
@@ -74,13 +76,14 @@ func Construct(armature *skelform_go.Armature, constOptions ConstructOptions) {
 // Recommended: include the whole texture array from the file even if not all will be used,
 // as the provided styles will determine the final appearance.
 func Draw(bones []skelform_go.Bone, visuals []skelform_go.Visuals, styles []skelform_go.Style, textures []*ebiten.Image, screen *ebiten.Image) {
+	// sort bones by Zindex
 	sort.Slice(bones, func(i, j int) bool {
 		if bones[i].Visuals_id == -1 || bones[j].Visuals_id == -1 {
 			return false
 		}
 		visualsA := visuals[bones[i].Visuals_id]
 		visualsB := visuals[bones[j].Visuals_id]
-		return visualsA.Zindex < visualsB.Zindex
+		return visualsA.Zindex <= visualsB.Zindex
 	})
 
 	for _, bone := range bones {
@@ -89,11 +92,25 @@ func Draw(bones []skelform_go.Bone, visuals []skelform_go.Visuals, styles []skel
 		}
 		visual := visuals[bone.Visuals_id]
 
+		// get this bone's current texture
 		tex, err := skelform_go.GetBoneTexture(visual.Tex, styles)
 		if err != nil {
 			continue
 		}
 
+		// will be used to flip pivot rotations if necessary
+		var dir float32
+		dir = 1.0
+		if skelform_go.IsFacingLeft(bone.Scale) {
+			dir = -1.0
+		}
+
+		// setup texture pivot
+		pivotPos := visual.Pivot_pos.Mul(tex.Size)
+		pivotPos = skelform_go.RotateVec2(pivotPos, float64(bone.Rot*dir)).Mul(bone.Scale).Mul(visual.Pivot_scale)
+		pivotPos.Y = -pivotPos.Y
+
+		// draw mesh
 		if len(visual.Vertices) > 0 {
 			drawMesh(visual, tex, textures[tex.AtlasIdx], screen)
 			continue
@@ -121,20 +138,19 @@ func Draw(bones []skelform_go.Bone, visuals []skelform_go.Visuals, styles []skel
 
 		op := &ebiten.DrawImageOptions{}
 
+		scale := skelform_go.Vec2{X: bone.Scale.X * visual.Pivot_scale.X, Y: bone.Scale.Y * visual.Pivot_scale.Y}
+
 		// center bone for scale & rot operations
-		size := skelform_go.Vec2{
-			X: tex.Size.X / 2 * bone.Scale.X,
-			Y: tex.Size.Y / 2 * bone.Scale.Y,
-		}
-		cos := math.Cos(float64(bone.Rot))
-		sin := math.Sin(float64(bone.Rot))
+		size := skelform_go.Vec2{X: tex.Size.X / 2 * scale.X, Y: tex.Size.Y / 2 * scale.Y}
+		cos := math.Cos(float64(bone.Rot + visual.Pivot_rot*dir))
+		sin := math.Sin(float64(bone.Rot + visual.Pivot_rot*dir))
 		bone.Pos.X -= size.X*float32(cos) + size.Y*float32(sin)
 		bone.Pos.Y += size.X*float32(sin) - size.Y*float32(cos)
 
-		op.GeoM.Scale(float64(bone.Scale.X), float64(bone.Scale.Y))
-		op.GeoM.Rotate(float64(-bone.Rot))
+		op.GeoM.Scale(float64(scale.X), float64(scale.Y))
+		op.GeoM.Rotate(float64(-bone.Rot - visual.Pivot_rot*dir))
 
-		op.GeoM.Translate(float64(bone.Pos.X), float64(bone.Pos.Y))
+		op.GeoM.Translate(float64(bone.Pos.X+pivotPos.X), float64(bone.Pos.Y+pivotPos.Y))
 
 		screen.DrawImage(sub.(*ebiten.Image), op)
 	}
